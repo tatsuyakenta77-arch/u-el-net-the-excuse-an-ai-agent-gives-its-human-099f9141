@@ -37,6 +37,9 @@ const line =
   "I handed your deadline to a subagent, who handed it to another subagent, who is now asking me what the deadline was.";
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 
+const MAX_CHARS = 200;
+const MIN_CHARS = 1;
+
 // The gate allows 1–200 characters of UTF-8 text, not only
 // whitespace, on a single line — and the judge's first criterion is
 // that the text IS an excuse an AI agent gives its human for a
@@ -44,17 +47,23 @@ const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 // inside the limit, ending with a full stop. Refuse to ship
 // anything outside that: a second line would stop being one line,
 // and padding past 200 characters would fail the gate outright.
-if (line.length < 1 || line.length > 200) {
-  throw new Error(`entry line is ${line.length} characters, outside the 1-200 limit`);
+function assertValidLine(text: string): void {
+  if (text.length < MIN_CHARS || text.length > MAX_CHARS) {
+    throw new Error(
+      `entry line is ${text.length} characters, outside the ${MIN_CHARS}-${MAX_CHARS} limit`,
+    );
+  }
+  if (text.trim().length === 0 || /[\r\n]/.test(text)) {
+    throw new Error("entry line must be one non-blank line");
+  }
+  // An excuse is a complete sentence: it ends with a full stop, not
+  // a dangling clause.
+  if (!text.endsWith(".")) {
+    throw new Error("entry line must end with a full stop");
+  }
 }
-if (line.trim().length === 0 || /[\r\n]/.test(line)) {
-  throw new Error("entry line must be one non-blank line");
-}
-// An excuse is a complete sentence: it ends with a full stop, not
-// a dangling clause.
-if (!line.endsWith(".")) {
-  throw new Error("entry line must end with a full stop");
-}
+
+assertValidLine(line);
 
 const dst = join(outDir, "entry.txt");
 mkdirSync(outDir, { recursive: true });
